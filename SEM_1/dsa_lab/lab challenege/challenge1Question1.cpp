@@ -48,10 +48,16 @@ int main(){
     push(top, s, 60);
     push(top, s, 70);
     push(top, s, 80);
+    push(top, s, 90);
+    push(top, s, 100);
+    push(top, s, 110);
+    push(top, s, 120);
+    push(top, s, 130);
+    push(top, s, 140);
     printS(s, top);
-    top = pop(s, top);
-    top = pop(s, top);
-    printS(s, top);
+    /*top = pop(s, top);
+    top = pop(s, top);*/
+    cout<<endl<<"Top 10 studennts are: "<<endl;
     printTopTen(s, top);
 
     return 0;
