@@ -11,3 +11,4 @@ price = ((price - a - disc) + tax)
 
 print(price)
 print(price//1)
+
