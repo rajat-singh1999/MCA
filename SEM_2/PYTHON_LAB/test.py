@@ -4,9 +4,12 @@ print(t.index(3))
 
 l = [1,2,3,4,5,6]
 l.reverse()
+l.remove(4)
+del l[2]
 print(l)
 
-'''price = int(input("Enter price:"))
+'''
+price = int(input("Enter price:"))
 offer_pr = int(input("Enter discount:"))
 a = price*(10/100) if price>2000 else 0
 print(f"after primary discount {price - a}")
