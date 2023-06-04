@@ -1,0 +1,890 @@
+Basic PL/SQL block
+
+> begin
+  	dbms_output.put_line('Welcome');
+  end;
+  /
+
+But this won't give output. Will show,
+PL/SQL procedure successfully completed.
+
+Do this,
+> set serveroutput on
+
+Now output will be shown.
+
+A simple variable declaration and printing,
+> declare
+  	var1 varchar2(10);
+  	num1 number(3);
+  begin
+  	var1:='ABCDEF';
+  	num1:=123;
+  	dbms_output.put_line('Val1: '||var1);  // This || helps in concatenating the outputs, like + in Java
+  	dbms_output.put_line('Num1: '||num1);
+  end;
+  /
+
+Now if you want to take values from an already made table,
+> declare
+  	name varchar2(10);
+  	sal number(10,2);
+  begin
+  	select First_Name, Salary into name, sal from Employees where Employee_id=100;
+  	dbms_output.put_line('Name: '||name);
+  	dbms_output.putline('Salary: '||sal);
+  end;
+  /
+
+Now let's say that name type does not match with the column being called form the table, or, as shown in the above example, has greater character length than 10 already defined, what to do? This,
+
+> declare
+  	name Employees.First_name%TYPE;
+  	sal Employees.Salary%TYPE;
+  begin
+  	select First_Name, Salary into name, sal from Employees where Employee_id=100;
+  	dbms_output.put_line('Name: '||name);
+  	dbms_output.putline('Salary: '||sal);
+  end;
+  /
+
+We just change the 2 declare types. This way, those variables will uhave the same type as the columns we are calling from the table.
+
+We can also copy other variable types, such as,
+
+> declare
+	name Employees.First_name%TYPE;
+  	sal Employees.Salary%TYPE;
+  	lastname name%TYPE;
+  .
+  .
+  .
+
+Now let's say we want to display the whole row of a particular table. It will be a cumbersome job to write down the names of all the columns in the declare part, especially in tables where there are huge number of attributes. We can use this method,
+
+> declare
+  	record Employees%ROWTYPE
+  begin
+  	select * into record from Employees where Employee_id=100;
+  	dbms_output.put_line(record.First_name || ' | ' || record.Last_name || ' | ' || record.Salary)
+  end;
+  	/
+
+Output: Raj | Hansda | 34567
+
+---------------------------Conditional statements--------------------------------------------
+
+> declare
+	deptid Employees.Department_id%TYPE;
+	sal Employees.Salary%TYPE;
+  begin
+  	select Salary, Department_id into sal,deptid from Employees where Employee_id=123;
+  	dbms_output.put_line('Salary | Department ID');
+  	dbms_output.put_line(sal||' | '||deptid);
+  	if deptid=30 then
+  		sal:=sal+5;
+  	elsif deptif=60 then
+  		sal:=sal+10;
+  	else
+  		sal:=sal+15;
+  	end if;
+  	update Employees set Salary=sal where Employee_id=123;	//This line makes changes to the original table, like commit in SQL. If this line is not executed, only output will be shown, but database won't be changed
+  	dbms_output.put_line(sal||' | '||deptid);
+  end;
+  /
+
+Output:
+Salary | Department ID
+1000 | 25
+1015 | 25
+
+To take input from user, we use a placeholder &. Here is how to use (Switch) Case,
+
+> declare
+	num number(1):=&weekday;
+	dayname varchar2(10);
+  begin
+  	dayname:= Case num
+  			when 1 then 'Monday'
+  			when 2 then 'Tuesday'
+  			when 5 then 'Friday'
+  			else 'Sunday'
+  	end;
+  	dbms_output.put_line(dayname);
+  end;
+  /
+
+Output:
+Enter value for weekday: 4
+old <lineno.>:	num number(1) := &weekday;
+new <lineno.>:	num number(1) := 4;
+Sunday
+
+This input taking somehow doesn't work for LiveSQL in the Oracle online server. You need SQLPLUS only to run these type of stuff then, I guess.
+
+----------------------------Loops-------------------
+
+There are 3 types of loops used in PL/SQL: basic loop, for loop and while loop. Following are the ways to use them,
+
+Basic loop
+> declare
+	s number(2);
+  begin
+  	s:=1;
+  	loop
+  		dbms_output.put_line(s);
+  		s:=s+1;
+  		exit when s>10;
+  	end loop;
+  end;
+  /
+
+Output:
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+
+While loop
+> declare
+	s number(2);
+  begin
+  	s:=1;
+  	while s<=4 loop
+  		dbms_output.put_line('s: '||s);
+  		s:=s+1;
+  	end loop;
+  end;
+  /
+
+Output:
+s: 1
+s: 2
+s: 3
+s: 4
+
+For loop
+> begin
+	for s in 1..5 loop
+		dbms_output.put_line('s: '||s);
+	end loop;
+  end;
+  /
+
+For runnning the loop in reverse, just add,
+for s in reverse 1..5 loop
+
+
+--------------------------------Cursors-------------------------
+
+
+Oracle creates a memory area, known as the context area, for processing an SQL statement, which contains all the information needed for processing the statement; for example, the number of rows processed, etc.
+
+A cursor is a pointer to this context area. PL/SQL controls the context area through a cursor. A cursor holds the rows (one or more) returned by a SQL statement. The set of rows the cursor holds is referred to as the active set.
+
+You can name a cursor so that it could be referred to in a program to fetch and process the rows returned by the SQL statement, one at a time. There are two types of cursors −
+
+Implicit cursors
+Explicit cursors
+
+Implicit cursors are automatically created by Oracle whenever an SQL statement is executed, when there is no explicit cursor for the statement. Programmers cannot control the implicit cursors and the information in it.
+
+Whenever a DML statement (INSERT, UPDATE and DELETE) is issued, an implicit cursor is associated with this statement. For INSERT operations, the cursor holds the data that needs to be inserted. For UPDATE and DELETE operations, the cursor identifies the rows that would be affected.
+
+In PL/SQL, you can refer to the most recent implicit cursor as the SQL cursor, which always has attributes such as %FOUND, %ISOPEN, %NOTFOUND, and %ROWCOUNT. The SQL cursor has additional attributes, %BULK_ROWCOUNT and %BULK_EXCEPTIONS, designed for use with the FORALL statement. The following table provides the description of the most used attributes −
+	
+%FOUND
+Returns TRUE if an INSERT, UPDATE, or DELETE statement affected one or more rows or a SELECT INTO statement returned one or more rows. Otherwise, it returns FALSE.
+
+%NOTFOUND
+The logical opposite of %FOUND. It returns TRUE if an INSERT, UPDATE, or DELETE statement affected no rows, or a SELECT INTO statement returned no rows. Otherwise, it returns FALSE.
+
+%ISOPEN
+Always returns FALSE for implicit cursors, because Oracle closes the SQL cursor automatically after executing its associated SQL statement.
+
+%ROWCOUNT
+Returns the number of rows affected by an INSERT, UPDATE, or DELETE statement, or returned by a SELECT INTO statement.
+
+Here's an example of the implicit cursor SQL,
+
+> declare
+	c number(3);
+  begin
+  	upadte Employees set salary=salary+5 where department_id=20;
+  	c:=SQL%ROWCOUNT;
+  	dbms_output.put_line(c||' rows updated');
+  end;
+  /
+
+Output: 2 rows updated
+
+Explicit cursors are programmer-defined cursors for gaining more control over the context area. An explicit cursor should be defined in the declaration section of the PL/SQL Block. It is created on a SELECT Statement which returns more than one row.
+
+There are 4 steps for handling explicit cursors. We first DECLARE the cursor, then OPEN it, then FETCH it , and then at the end CLOSE it.
+
+Here's an example,
+> declare
+	empno employees.employee_id%TYPE;
+	ename employees.last_name%TYPE;
+	cursor emp_cur is
+		select employee_id,last_name from employees;
+
+  begin
+  	open emp_cur;
+  	//Here one can use %ISOPEN to check if the cursor is open or not
+  	loop
+  		fetch emp_cur into empno,ename;
+  		exit when emp_cur%ROWCOUNT>5 or emp_cur%NOTFOUND;	//We want to print 10 records, that is the first terminating condition. But if there are less than 5 rows, that is why the 2nd condition is given. If no records are found, then the loop will terminate.
+  		dbms_output.put_line(empno||' : '||ename);
+  	end loop;
+  	close emp_cur;
+  end;
+  /
+
+Output:
+100 : Ashish
+101 : Bakul
+102 : Chiran
+103 : Duranta
+104 : Elam
+
+There are a few types of advanced cursors, parameterized cursor, we send a parametre to the cursor. Whenever we open the cursor, we will send a parametre that we might need,
+> declare
+	empno employees.employee_id%TYPE;
+	ename employees.last_name%TYPE;
+	cursor emp_cur(p_did number) is
+		select employee_id,last_name from employees where department_id=p_did;
+  begin
+  	open emp_cur(10);
+  	loop
+  		fetch emp_cur into empno,ename;
+  		exit when emp_cur%ROWCOUNT>5 or emp_cur%NOTFOUND;
+  		dbms_output.put_line(empno||' : '||ename);
+  	end loop;
+  	close emp_cur;
+  	dbms_output.put_line('-------------')
+  	open emp_cur(20);
+  	loop
+  		fetch emp_cur into empno,ename;
+  		exit when emp_cur%ROWCOUNT>5 or emp_cur%NOTFOUND;
+  		dbms_output.put_line(empno||' : '||ename);
+  	end loop;
+  	close emp_cur;
+  	dbms_output.put_line('-------------')
+end;
+
+Output:
+100 : Arun			//These guys are in dept 10
+101 : Kamesh
+102 : Monish
+--------------
+300 : Hrishikesh	//These guys are in dept 20
+301 : Rajat
+--------------
+
+Now when we use the cursor to do some jobs on the database, we need to lock on a resource, so that any other user wishing to use the same resource doesn't interfere with my data. Other transactions should not affect my transaction.
+
+> declare
+	cursor emp_cur is
+		select employees_id,last_name,salary from employees where department_id=10 FOR UPDATE OF salary NOWAIT;
+  begin
+  	update employees set salary=salary+5 where department_id=10;
+  end;
+  /
+
+We used FOR UPDATE OF ... NOWAIT. Now if any other user tries to access this database/resource, then he has to wait, or gets an exception. He has to wait till we COMMIT or ROLLBACK our transaction.
+
+Now there might be some situations where we want to make changes only to the record that our cursor is pointing to at that moment.
+
+> declare
+	cursor sal_cur is
+		select employees_id,last_name,salary from employees where department_id=10 FOR UPDATE OF salary NOWAIT;
+  begin
+  	for emp_rec in sal_cur
+  	loop
+  		if emp_rec.salary<5000 then
+  			update employees set salary=salary+100 WHERE CURRENT OF sal_cur;
+  		end if;
+  	end loop;
+  end;
+
+We used WHERE CURRENT OF. Now if in a table, there are quite a few records that have salary<5000,
+
+Name | salary
+-------------
+Arun | 4500
+Kame | 4000
+Raja | 6000
+Hris | 7000
+
+The cursor points to Arun record first. So only Arun's salary will be increased by 100. If we didn't use WHERE CURRENT OF then all records where salary<5000 will be updated.
+
+
+-------------------------Excpetion handling----------------
+
+Implicit exceptions. A exception block will be declared after the begin block.
+
+> declare
+	sal employees.salary%TYPE;
+	ename employees.last_name%TYPE;
+  begin
+  	select last_name,salary into ename,sal from employees where employee_id=987;
+  	dbms_output.put_line(ename||' earns '||sal);
+
+  exception
+  	when NO_DATA_FOUND then
+  		dbms_output.put_line('No records');
+  	when TOO_MANY_ROWS then
+  		dbms_output.put_line('More than 1 records found');
+  	when OTHERS then
+  		dbms_output.put_line('Some error found');
+  	end;
+
+Now here employee_id=987 does not exist, so if exception handling was not used, an exception would have beem showed, no such record. But after exception handling, using NO_DATA_FOUND, we are defining the exception to do a certain thing we want it to.
+
+If employee_id=987 exists then exception TOO_MANY_ROWS will be called, because we haven't used any cursor, so it is an exception when there are more than one row.
+
+Explicit exceptions. We can define our own exceptions in a situation in the code. Even in places where there won't be any exception implicitly.
+
+> declare
+	lastname employees.last_name%TYPE;
+	sal employees.salary%TYPE;
+	invalid_dept EXCEPTION;
+  begin
+  	update employees set salary=salary+20 where department_id=987;
+
+  	if SQL%NOTFOUND 
+  		then raise invalid_dept;
+  	end if;
+  	commit;
+
+  exception
+  	when NO_DATA_FOUND then
+  		dbms_output.put_line('No records');
+  	when TOO_MANY_RECORDS then
+  		dbms_output.put_line('More than 1 record found')
+  	when invalid_dept then
+  		dbms_output.put_line('No such dept found');
+  	when OTHERS then
+  		dbms_output.put_line('Some error found');
+  end;
+
+If exception was not raised explicitly, output would have been 0 records updated. But now a different output will come, as defined by the exception.
+
+-----------------------------------------------------
+> CREATE OR REPLACE procedure/type/... abc is
+  begin/declare/....
+
+ What create or replace does is it creates a procedure/type/..., and if that procedure/type/... already exists in the database, it replaces that with the new definition that we are defining.
+ ----------------------------------------------------
+
+ ----------------------------------------Procedure------------------------
+
+Pocedure is used when we want to reuse a bit of code we have used previously. Normally we don't name any of our executions, but with procedure, we can save that bit of operations. This also optimises the operations a bit because a compiled version of that procedure gets stored in the database. When that procedure is called in another operation, extra compilation is not necessary. 
+
+Now there are 3 modes of Procedure: IN, OUT and IN OUT.
+In IN, parametres are sent to the procedure. Formal parametres: parametres declared when creating the procedure. Actual parametre: Parametres passed when the procedure is being called. 
+In OUT, values are passed from procedure to the caller.
+In IN OUT, both happens.
+
+IN,
+
+> create or replace procedure add_dept
+	(p_did IN departments.department_id%TYPE,
+	p_dname IN departments.department_name%TYPE,
+	p_mid IN departments.manager_id%TYPE,
+	p_lid IN departments.location_id%TYPE) is
+	begin
+		insert into departments values(p_did,p_dname,p_mid,p_lid);
+		dbms_output.put_line('Department added.');
+	end;
+	/
+Output: Procedure created
+
+> execute add_dept(500,'New Dept',104,1000);
+
+Output: Department added.
+
+Now here were sending values to the procedure when calling the procedure. It is also optimised as the compilation of the procedure has already been done. We can also send variables or other kind of values when calling the procedure.
+
+Now when we check the departments table,
+> select * from departments where department_id=500;
+
+DEPARTMENT_ID  DEPARTMENT_NAME  MANAGER_ID  LOCATION_ID
+-------------  ---------------  ----------  -----------
+500			   New dept 		104         1000
+
+Now for OUT,
+> create or replace procedure add_dept
+	(p_did IN departments.department_id%TYPE,
+	p_dname OUT departments.department_name%TYPE) is
+	begin
+		select department_name into p_dname from departments where department_id=p_did;
+	end;
+	/
+
+> declare
+	dname varchar(10);
+  begin
+  	add_dept(500,dname);
+  	dbms_output.put_line(dname);
+  end;
+  /
+
+Output: New Dept
+
+This 'New Dept' comes from the previous example, where we put department name as New Dept where Dept_id is 500.
+Basically we can think, what is happening? When we are calling add_dept(500,dname), the query is getting executed and New Dept is found, then it is put into p_dname.
+
+Now for IN OUT,
+
+> create or replace procedure format_phone_no(p_phone_no IN OUT varchar2) is 
+  begin
+  	p_phone_no:= '('||substr(p_phone_no,1,3)||')'||substr(p_phone_no,4,3)||'-'||substr(p_phone_no,7);
+  end;
+  /
+
+> declare
+	v_p_no varchar2(15);
+  begin
+  	v_p_no:='9087654321';
+  	fomrat_phone_no(v_p_no);	//v_p_no is sent to the procedure
+  	dbms_ouput.put_line(v_p_no);	//v_p_no is got back and printed here
+  end;
+  /
+
+Output: (908)765-4321
+
+-------------------------Functions--------------------------
+
+> create or replace function get_tax_amt(p_salary number) return number is
+	begin
+		return (p_salary*10/100);
+	end;
+	/
+
+> select get_tax_amt(salary) from employees;
+
+-----------------------Packages-----------------
+
+Packages are like class in. They can hold multiple procedures and functions. There are two parts of a package: specification and body. In specification we declare the procedsures and functions that are in the the package, and in the body, we define the procedures and functions, public or private.
+When a package is called, maybe for a function or procedure in that package, all the other functions or packages in the package are also loaded into the memory because it is thought that the others will also be needed.
+
+> create or replace package manage_emp is
+	procedure add_emp(p_id number,p_name varchar);
+	procedure edit_emp(p_id number,p_name varchar);
+  end manage_emp;
+  /
+
+Output: Package created
+
+> create or replace package body manage_emp is
+	procedure add_emp(p_id number, p_name varchar) is
+		begin
+			dbms_output.put_line('EMployEE AdDeD');
+	end add_emp;
+
+	procedure edit_emp(p_id number,p_name varchar) is
+		begin
+			dbms_output.put_line('EmpLoYee uPdAted');
+	end edit_emp;
+  end;
+  /
+
+Output: Package body created
+
+> execute manage_emp.add_emp(100,'Tuhin');
+
+Output: EMployEE AdDeD
+
+> execute manage_emp.edit_emp(113,'Kahu');
+
+Output: EmpLoYee uPdAted
+
+Sometimes we might need to use constants already defined. There we will use bodiless packages,
+
+> create or replace package glob_const is
+	mile2km constant number:=1.6093;
+	km2mile constant number:=0.6214;
+  end;
+  /
+
+> execute dbms_output.put_line(20*glob_const.mile2km);
+
+Output: 32.186
+
+> execute dbms_output.put_line(20*glob_const.km2mile);
+
+Output: 12.428
+
+
+Overloading,
+> create or replace package ch_ovrload is
+	procedure che_ck(a number);
+	procedure che_ck(a number,b varchar);
+	procedure che_ck(a number,b number,c varchar);
+  end ch_ovrload;
+  /
+
+> create or replace package body ch_ovrload is
+	procedure che_ck(a number) is 
+		begin
+			dbms_output.put_line('1st procedure');
+	end che_ck;
+	procedure che_ck(a number,b varchar) is 
+		begin
+			dbms_output.put_line('2nd procedure');
+	end che_ck;
+	procedure che_ck(a number,b number,c varchar) is 
+		begin
+			dbms_output.put_line('3rd procedure');
+	end che_ck;
+  end;
+  /
+
+> execute ch_ovrload.che_ck(1,'ASD');
+
+Output: 2nd procedure
+
+Now just as in C++, to call a function, we have to have it defined above the caller, or as in PL/SQL case, at least the prototype of the procedure needs to be defined.
+
+> create or replace package manage_emp is
+	procedure add_emp(p_id number,p_name varchar);
+	procedure edit_emp(p_id number,p_name varchar);
+  end manage_emp;
+  /
+
+> create or replace package body manage_emp is
+	procedure search_emp(p_id number);	//prototype declared even when body is defined after call in edit_emp
+	procedure add_emp(p_id number, p_name varchar) is
+		begin
+			dbms_output.put_line('EMployEE AdDeD');
+	end add_emp;
+
+	procedure edit_emp(p_id number,p_name varchar) is
+		begin
+			search_emp(p_id);
+			dbms_output.put_line('EmpLoYee uPdAted');
+	end edit_emp;
+
+	procedure search_emp(p_id number) is
+		begin
+			dbms_output.put_line('Employee found');
+	end search_emp;
+  end;
+ 
+Now if this was not done, it would have shown, 
+Warning: Package Body created with compilation errors.
+
+To see the errors,
+> show errors
+
+Then the errors would be shown. 
+
+--------------------------------------Triggers---------------------
+
+A trigger is a stored procedure in database which automatically invokes whenever a special event in the database occurs. Triggers are useful when we want some operations to perform on their own, when we would be doing some DML operations(UPDATE, INSERT, DELETE). There is also INSTEAD OF trigger and DDL trigger.
+
+We will work on these two tables,
+
+tbl_emp:-
+
+EMPID  NAME  SALARY  DEPT
+-----  ----  ------  ----
+101    ABC   5000    20
+102    DEF   4000    10
+103    GHI   4500    10
+104    JKL   3000    20
+
+tbl_dept:-
+
+DEPTID  DEPTNAME
+------  --------
+10      IT
+20      HR
+30      DEV
+
+Now here is a trigger that will display a msg after insertion of a new record into tbl_emp,
+
+> create or replace TRIGGER emp_insert
+	AFTER INSERT ON tbl_emp
+	begin
+		dbms_output.put_line('Insertion successful');
+	end;
+	/
+
+Output: Trigger created.
+
+> insert into tbl_emp values(105,'MNO',6000,30);
+
+Output: Insertion successful
+
+1 row created.
+
+We saw how to create a trigger that will work after a DML operation. Now we are creating a trigger that will not allow the User to insert into the tables outside a specified time,
+
+> create or replace trigger restricted_ins
+	before insert on tbl_emp
+	begin
+		if(TO_CHAR(SYSDATE,'HH24:MI') NOT BETWEEN '09:00' AND '17:00') THEN
+			RAISE_APPLICATION_ERROR(-20123,'Insertion allowed only between 9 am and 5 pm');
+		end if;
+	end;
+	/
+
+Now if we try to insert into tbl_emp if our system time is not between 9 am and 5 pm, then,
+
+> insert into tbl_emp values(106,'PQR',3000,30);
+
+Output: 
+insert into tbl_emp values(106,'PQR',3000,30);
+			*
+ERROR at line 1:
+ORA-20123: Insertion allowed only between 9 am and 5 pm
+ORA-06512: at "SYSTEM.RESTRICTED_INS", line 3
+ORA-04088: error during execution of trigger 'SYSTEM.RESTRICTED_INS'
+
+TO_CHAR(SYSDATE,'HH24:MI') changes the system time to 24 hr format and to character format. -20123 is error code.
+
+Now we can do this for all the DML operations just by changing the above code a little bit,
+
+	before insert or update or delete on tbl_emp
+
+and change the error code to -20124.
+
+The above changes are made to the whole table, what if we need to make changes to specific rows?
+
+> create or replace trigger sal_update_check
+	before update of salary on tbl_emp
+	FOR EACH ROW
+	begin
+		if :NEW.salary < :OLD.salary then
+			raise_application_error(-20125,'Updated salary can't be lesser than current salary');
+		end if;
+	end;
+
+With :NEW we represent the values after updation, :OLD is before updation. 
+
+Now when we go to update an employee's salary and the updated salary is lesser than the previous one, error will occur.
+
+Now let's see the use of INSTEAD OF, It is only used with views. Below is a view created with tbl_emp and tbl_dept
+
+empdata:-
+
+EMPID  NAME  DEPTNAME  SALARY
+-----  ----  --------  ------
+102	   DEF   IT        4000
+103    GHI	 IT        4500
+101    ABC   HR        5000
+104    JKL   HR        3000
+105    MNO   DEV       6000
+106    PQR   DEV       3000
+
+Now we will create a trigger that when we insert into the view empdata, will add the same information to the tbl_emp too. We will enter department name in the view, but in tbl_emp department id will be inserted,
+
+> create or replace trigger emp_dept_ins
+	INSTEAD OF INSERT on empdata
+	for each row
+	declare
+		v_did number;
+	begin
+		select deptid into v_did from tbl_dept where lower(deptname)=lower(:NEW.deptname);
+		if INSERTING then
+			insert into tbl_emp values(:NEW.empid,:NEW.name,:NEW.salary,:NEW.v_did);
+		end if;
+	end;
+	/
+
+Here we can also use elsif if we need to check for UPDATING and DELETING also.
+Now here when we insert into empdata, its deptid value goes into v_did which then goes into the if block where insertion into the tbl_emp occurs. 
+We can print all the tables and see that they have been updated.
+
+Now we use trigger on the DDL commands(CREATE, ALTER, TRUNCATE and DROP).
+
+> create or replace trigger restrict_drop_tbl
+	BEFORE DROP ON DATABASE
+	begin
+		raise_application_error(-20125,'Dropping table not allowed from this database');
+	end;
+	/
+
+Now if we try to drop any table or view from our current database, we will be shown the error we now created.
+
+Now let's try a code where our login and logout date and time from the schema will be recorded.
+
+The description of the table,
+
+> desc login_details;
+
+Output:
+Name          Null?  Type
+------------  -----  ----
+LOGINID              VARCHAR2(10)
+LOGINTIME            VARCHAR2(20)
+ACTION               VARCHAR2(10)
+
+> create or replace trigger login_trigger
+	AFTER LOGON ON SCHEMA
+	begin
+		insert into login_details values(USER,to_char(SYSDATE,'dd-mm-yyyy hh24:mi:ss'),'Login');
+	end;
+	/
+
+> create or replace trigger logout_trigger
+	AFTER LOGOFF ON SCHEMA
+	begin
+		insert into login_details values(USER,to_char(SYSDATE,'dd-mm-yyyy hh24:mi:ss'),'Logout');
+	end;
+	/
+ 
+Now if we disconnect and reconnect to the server using DISC for disconnect and CONN SYSTEM for reconnecting, these data are being inserted into the login_details table.
+
+Now if we check the login_details table,
+
+> select * from login_details;
+
+Output:
+LOGINID  LOGINTIME             ACTION
+-------  --------------------  ------
+SYSTEM   22-JAN-2023 11:45:36  Logout
+SYSTEM   22-JAN-2023 11:45:58  Login
+
+
+
+
+prime or not
+
+declare
+
+-- declare variable n, i
+-- and temp of datatype number
+n number;			
+i number;		
+temp number;	
+
+begin
+
+-- Here we Assigning 13 into n
+n := 24;				
+
+-- Assigning 2 to i
+i := 2;
+
+-- Assigning 1 to temp
+temp := 1;
+
+-- loop from i = 2 to n/2
+for i in 2..n/2
+	loop
+		if mod(n, i) = 0
+		then
+			temp := 0;
+			exit;
+		end if;
+	end loop;
+
+	if temp = 1
+	then
+		dbms_output.put_line('true');
+	else
+		dbms_output.put_line('false');
+	end if;
+end;		
+
+
+
+ARMSTRONG
+declare
+	sta number:=&tart;
+	en number:=&nd;
+	s number:=0;
+	r number;
+	len number;
+    m number;
+begin
+	
+	for v in sta..en loop
+        m:=v;
+    	len := length(to_char(v));
+    	s:=0;
+    	-- while loop till n>0
+    	while m>0
+    	loop
+    		r := mod(m , 10);
+    		s := s + power(r , len);
+    		m := trunc(m / 10);
+        end loop;
+        if v=s
+    	then
+    		dbms_output.put_line(v || ' is armstrong');
+    	end if;
+	end loop;
+end;
+/9
+
+
+
+
+Fibonacci
+declare
+	f int:=0;
+	s int:=1;
+	t int;
+begin
+	dbms_output.put_line(f||' ');
+	dbms_output.put_line(s||' ');
+	for b in 1..13 loop
+		t:=f+s;
+		f:=s;
+		s:=t;
+		dbms_output.put_line(t||' ');
+	end loop;
+end;
+/
+
+decimal to binary
+declare
+	n number:=&emilheskey;
+	d number;
+	x number;
+begin
+	x:=n;
+	loop
+		d:=mod(x,2);
+		dbms_output.put(d);
+		x:=trunc(x/2);
+		exit when x=0;
+	end loop;
+	dbms_output.new_line;
+end;
+/
+
+
+
+binary to decimal
+declare 
+	 n int:=&x;
+	 d number;
+	 c number(3):=0;
+	 s int:=0;
+begin
+	loop
+		d:=mod(n,10);
+		s:=s+power(2,c)*d;
+		n:=trunc(n/10);
+		c:=c+1;
+		exit when n=0;
+	end loop;
+	dbms_output.put_line(s);
+end;
+/
+
+
+
+

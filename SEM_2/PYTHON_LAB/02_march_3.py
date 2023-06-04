@@ -1,0 +1,1 @@
+#enter 2 numbers. validate that it should not be decimal. add them
