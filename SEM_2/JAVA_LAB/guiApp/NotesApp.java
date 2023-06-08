@@ -4,167 +4,254 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.sql.*;
 
-public class NotesApp {
-    private JFrame frame;
-    private JTextField emailField;
-    private JPasswordField passwordField;
-    private JTextArea notesArea;
-    private JButton loginButton;
-    private JButton logoutButton;
-    private JButton saveButton;
-    private Connection connection;
-    private String currentUser;
+public class NotesApp extends JFrame {
+    private static final String DB_URL = "jdbc:sqlite:notes.db";
+    private static final String CREATE_TABLE_QUERY = "CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT)";
+    private static final String CREATE_NOTES_TABLE_QUERY = "CREATE TABLE IF NOT EXISTS notes (username TEXT, note TEXT)";
+
+    private JPanel pnlLogin;
+    private JLabel lblUsername;
+    private JLabel lblPassword;
+    private JTextField txtUsername;
+    private JPasswordField txtPassword;
+    private JButton btnLogin;
+    private JButton btnLogout;
+
+    private JPanel pnlNotes;
+    private JList<String> lstNotes;
+    private JScrollPane scrollPane;
+    private JTextArea txtAreaNote;
+    private JButton btnCreateNote;
+    private JButton btnEditNote;
+    private JButton btnDeleteNote;
+
+    private String currentUsername;
+
+    public NotesApp() {
+        super("Notes App");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setSize(400, 400);
+        setLocationRelativeTo(null);
+        setLayout(new BorderLayout());
+
+        pnlLogin = new JPanel(new GridLayout(3, 2));
+        lblUsername = new JLabel("Username:");
+        lblPassword = new JLabel("Password:");
+        txtUsername = new JTextField();
+        txtPassword = new JPasswordField();
+        btnLogin = new JButton("Login");
+        btnLogout = new JButton("Logout");
+
+        pnlLogin.add(lblUsername);
+        pnlLogin.add(txtUsername);
+        pnlLogin.add(lblPassword);
+        pnlLogin.add(txtPassword);
+        pnlLogin.add(btnLogin);
+        pnlLogin.add(btnLogout);
+
+        pnlNotes = new JPanel(new BorderLayout());
+        lstNotes = new JList<>();
+        scrollPane = new JScrollPane(lstNotes);
+        txtAreaNote = new JTextArea();
+        btnCreateNote = new JButton("Create Note");
+        btnEditNote = new JButton("Edit Note");
+        btnDeleteNote = new JButton("Delete Note");
+
+        pnlNotes.add(scrollPane, BorderLayout.CENTER);
+        pnlNotes.add(txtAreaNote, BorderLayout.SOUTH);
+        pnlNotes.add(btnCreateNote, BorderLayout.EAST);
+        pnlNotes.add(btnEditNote, BorderLayout.WEST);
+        pnlNotes.add(btnDeleteNote, BorderLayout.NORTH);
+
+        add(pnlLogin, BorderLayout.NORTH);
+        add(pnlNotes, BorderLayout.CENTER);
+
+        btnLogin.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String username = txtUsername.getText();
+                String password = new String(txtPassword.getPassword());
+                if (login(username, password)) {
+                    currentUsername = username;
+                    showNotes();
+                    clearLoginForm();
+                } else {
+                    JOptionPane.showMessageDialog(null, "Invalid username or password", "Login Failed", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+
+        btnLogout.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                currentUsername = null;
+                clearNotes();
+                clearLoginForm();
+            }
+        });
+
+        btnCreateNote.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (currentUsername != null) {
+                    String note = txtAreaNote.getText();
+                    if (!note.isEmpty()) {
+                        saveNoteToDatabase(currentUsername, note);
+                        showNotes();
+                    }
+                } else {
+                    JOptionPane.showMessageDialog(null, "Please login to create a note", "Login Required", JOptionPane.INFORMATION_MESSAGE);
+                }
+            }
+        });
+
+        btnEditNote.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (currentUsername != null) {
+                    int selectedIndex = lstNotes.getSelectedIndex();
+                    if (selectedIndex != -1) {
+                        String existingNote = lstNotes.getSelectedValue();
+                        String updatedNote = txtAreaNote.getText();
+                        if (!updatedNote.isEmpty()) {
+                            updateNoteInDatabase(currentUsername, existingNote, updatedNote);
+                            showNotes();
+                        }
+                    }
+                } else {
+                    JOptionPane.showMessageDialog(null, "Please login to edit a note", "Login Required", JOptionPane.INFORMATION_MESSAGE);
+                }
+            }
+        });
+
+        btnDeleteNote.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (currentUsername != null) {
+                    int selectedIndex = lstNotes.getSelectedIndex();
+                    if (selectedIndex != -1) {
+                        String noteToDelete = lstNotes.getSelectedValue();
+                        deleteNoteFromDatabase(currentUsername, noteToDelete);
+                        showNotes();
+                    }
+                } else {
+                    JOptionPane.showMessageDialog(null, "Please login to delete a note", "Login Required", JOptionPane.INFORMATION_MESSAGE);
+                }
+            }
+        });
+
+        createTablesIfNotExist();
+    }
+
+    private void createTablesIfNotExist() {
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             Statement stmt = conn.createStatement()) {
+
+            stmt.executeUpdate(CREATE_TABLE_QUERY);
+            stmt.executeUpdate(CREATE_NOTES_TABLE_QUERY);
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private boolean login(String username, String password) {
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             PreparedStatement stmt = conn.prepareStatement("SELECT * FROM users WHERE username = ? AND password = ?")) {
+
+            stmt.setString(1, username);
+            stmt.setString(2, password);
+
+            ResultSet rs = stmt.executeQuery();
+            return rs.next();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    private void saveNoteToDatabase(String username, String note) {
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             PreparedStatement stmt = conn.prepareStatement("INSERT INTO notes (username, note) VALUES (?, ?)")) {
+
+            stmt.setString(1, username);
+            stmt.setString(2, note);
+
+            stmt.executeUpdate();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void updateNoteInDatabase(String username, String existingNote, String updatedNote) {
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             PreparedStatement stmt = conn.prepareStatement("UPDATE notes SET note = ? WHERE username = ? AND note = ?")) {
+
+            stmt.setString(1, updatedNote);
+            stmt.setString(2, username);
+            stmt.setString(3, existingNote);
+
+            stmt.executeUpdate();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void deleteNoteFromDatabase(String username, String note) {
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             PreparedStatement stmt = conn.prepareStatement("DELETE FROM notes WHERE username = ? AND note = ?")) {
+
+            stmt.setString(1, username);
+            stmt.setString(2, note);
+
+            stmt.executeUpdate();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void showNotes() {
+        if (currentUsername != null) {
+            try (Connection conn = DriverManager.getConnection(DB_URL);
+                 PreparedStatement stmt = conn.prepareStatement("SELECT note FROM notes WHERE username = ?")) {
+
+                stmt.setString(1, currentUsername);
+
+                ResultSet rs = stmt.executeQuery();
+                DefaultListModel<String> notesModel = new DefaultListModel<>();
+                while (rs.next()) {
+                    String note = rs.getString("note");
+                    notesModel.addElement(note);
+                }
+                lstNotes.setModel(notesModel);
+
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        } else {
+            clearNotes();
+        }
+    }
+
+    private void clearNotes() {
+        lstNotes.setModel(new DefaultListModel<>());
+        txtAreaNote.setText("");
+    }
+
+    private void clearLoginForm() {
+        txtUsername.setText("");
+        txtPassword.setText("");
+    }
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
-                new NotesApp().initialize();
+                new NotesApp().setVisible(true);
             }
         });
-    }
-
-    public void initialize() {
-        frame = new JFrame("Notes App");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-        JPanel panel = new JPanel();
-        panel.setLayout(new GridLayout(4, 2));
-
-        panel.add(new JLabel("Email:"));
-        emailField = new JTextField();
-        panel.add(emailField);
-
-        panel.add(new JLabel("Password:"));
-        passwordField = new JPasswordField();
-        panel.add(passwordField);
-
-        loginButton = new JButton("Log In");
-        loginButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                login();
-            }
-        });
-        panel.add(loginButton);
-
-        logoutButton = new JButton("Log Out");
-        logoutButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                logout();
-            }
-        });
-        panel.add(logoutButton);
-        logoutButton.setEnabled(false);
-
-        notesArea = new JTextArea();
-        panel.add(new JScrollPane(notesArea));
-
-        saveButton = new JButton("Save Notes");
-        saveButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                saveNotes();
-            }
-        });
-        panel.add(saveButton);
-        saveButton.setEnabled(false);
-
-        frame.add(panel);
-        frame.setSize(400, 300);
-        frame.setVisible(true);
-
-        connectToDatabase();
-    }
-
-    private void connectToDatabase() {
-        try {
-            // Modify the database URL, username, and password as per your configuration
-            String url = "jdbc:mysql://localhost:3306/notes_db";
-            String username = "your_username";
-            String password = "your_password";
-
-            connection = DriverManager.getConnection(url, username, password);
-            System.out.println("Connected to the database");
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void login() {
-        String email = emailField.getText();
-        String password = new String(passwordField.getPassword());
-
-        try {
-            // Check if the user exists in the database
-            PreparedStatement statement = connection.prepareStatement("SELECT * FROM users WHERE email=? AND password=?");
-            statement.setString(1, email);
-            statement.setString(2, password);
-            ResultSet resultSet = statement.executeQuery();
-
-            if (resultSet.next()) {
-                currentUser = email;
-                loginButton.setEnabled(false);
-                logoutButton.setEnabled(true);
-                saveButton.setEnabled(true);
-
-                // Load the user's notes
-                loadNotes();
-            } else {
-                JOptionPane.showMessageDialog(frame, "Invalid email or password", "Error", JOptionPane.ERROR_MESSAGE);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void logout() {
-        currentUser = null;
-        emailField.setText("");
-        passwordField.setText("");
-        notesArea.setText("");
-        loginButton.setEnabled(true);
-        logoutButton.setEnabled(false);
-        saveButton.setEnabled(false);
-    }
-
-    private void saveNotes() {
-        if (currentUser == null) {
-            JOptionPane.showMessageDialog(frame, "Please log in to save notes", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        String notes = notesArea.getText();
-
-        try {
-            // Update or insert the user's notes in the database
-            PreparedStatement statement = connection.prepareStatement("INSERT INTO notes (email, notes) VALUES (?, ?) ON DUPLICATE KEY UPDATE notes=?");
-            statement.setString(1, currentUser);
-            statement.setString(2, notes);
-            statement.setString(3, notes);
-            statement.executeUpdate();
-
-            JOptionPane.showMessageDialog(frame, "Notes saved successfully", "Success", JOptionPane.INFORMATION_MESSAGE);
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void loadNotes() {
-        if (currentUser == null) {
-            JOptionPane.showMessageDialog(frame, "Please log in to load notes", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        try {
-            // Retrieve the user's notes from the database
-            PreparedStatement statement = connection.prepareStatement("SELECT notes FROM notes WHERE email=?");
-            statement.setString(1, currentUser);
-            ResultSet resultSet = statement.executeQuery();
-
-            if (resultSet.next()) {
-                String notes = resultSet.getString("notes");
-                notesArea.setText(notes);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
     }
 }
