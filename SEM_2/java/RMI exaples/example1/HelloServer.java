@@ -1,5 +1,8 @@
+/*
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+*/
+import java.rmi.registry.*;
 
 public class HelloServer {
     public static void main(String[] args) {
