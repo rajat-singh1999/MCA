@@ -1,0 +1,1 @@
+hadoop jar "D:\Backup_28Sep\Study Material\MCA2\SEM_3\Big_data\J\code\CricketDataAnalytics" CricketDataAnalyticsDriver /user/Rajat/cricket_input/ENGvsAUS.txt /user/Rajat/cricket_output
